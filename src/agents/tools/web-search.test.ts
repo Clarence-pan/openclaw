@@ -4,7 +4,29 @@ import { __testing } from "./web-search.js";
 const { inferPerplexityBaseUrlFromApiKey, resolvePerplexityBaseUrl, normalizeFreshness } =
   __testing;
 
-describe("web_search perplexity baseUrl defaults", () => {
+describe("web_search zhipu baseUrl defaults", () => {
+  it("accepts zhipu provider and config", () => {
+    const res = validateConfigObject({
+      tools: {
+        web: {
+          search: {
+            enabled: true,
+            provider: "zhipu",
+            zhipu: {
+              apiKey: "test-key",
+              baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+              model: "web-search-pro",
+            },
+          },
+        },
+      },
+    });
+
+    expect(res.ok).toBe(true);
+  });
+});
+
+describe("web_search Perplexity baseUrl resolution", () => {
   it("detects a Perplexity key prefix", () => {
     expect(inferPerplexityBaseUrlFromApiKey("pplx-123")).toBe("direct");
   });
