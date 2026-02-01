@@ -17,6 +17,7 @@ export type AuthChoiceGroupId =
   | "cloudflare-ai-gateway"
   | "moonshot"
   | "zai"
+  | "zai-coding-plan"
   | "xiaomi"
   | "opencode-zen"
   | "minimax"
@@ -98,6 +99,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Qianfan",
     hint: "API key",
     choices: ["qianfan-api-key"],
+  },
+  {
+    value: "zai-coding-plan",
+    label: "Z.AI Coding Plan",
+    hint: "GLM 4.7/4.6 models",
+    choices: ["zai-coding-plan-api-key"],
   },
   {
     value: "copilot",
@@ -209,6 +216,11 @@ export function buildAuthChoiceOptions(params: {
     hint: "Uses the bundled Gemini CLI auth plugin",
   });
   options.push({ value: "zai-api-key", label: "Z.AI (GLM 4.7) API key" });
+  options.push({
+    value: "zai-coding-plan-api-key",
+    label: "Z.AI Coding Plan API key",
+    hint: "GLM 4.7/4.6 models via OpenAI-compatible endpoint",
+  });
   options.push({
     value: "xiaomi-api-key",
     label: "Xiaomi API key",
