@@ -260,6 +260,10 @@ export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
     return pick("ZAI_API_KEY") ?? pick("Z_AI_API_KEY");
   }
 
+  if (normalized === "zai-coding-plan") {
+    return pick("ZAI_CODING_PLAN_API_KEY") ?? pick("ZAI_CODING_PLAN_API_KEY");
+  }
+
   if (normalized === "google-vertex") {
     const envKey = getEnvApiKey(normalized);
     if (!envKey) {
