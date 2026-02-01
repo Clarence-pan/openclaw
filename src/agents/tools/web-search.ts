@@ -17,7 +17,7 @@ import {
   writeCache,
 } from "./web-shared.js";
 
-const SEARCH_PROVIDERS = ["brave", "perplexity"] as const;
+const SEARCH_PROVIDERS = ["brave", "perplexity", "zhipu"] as const;
 const DEFAULT_SEARCH_COUNT = 5;
 const MAX_SEARCH_COUNT = 10;
 
@@ -27,6 +27,10 @@ const PERPLEXITY_DIRECT_BASE_URL = "https://api.perplexity.ai";
 const DEFAULT_PERPLEXITY_MODEL = "perplexity/sonar-pro";
 const PERPLEXITY_KEY_PREFIXES = ["pplx-"];
 const OPENROUTER_KEY_PREFIXES = ["sk-or-"];
+
+const DEFAULT_ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
+const DEFAULT_ZHIPU_MODEL = "web-search-pro";
+const ZHIPU_KEY_PREFIXES = ["zhipu-"];
 
 const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
@@ -101,6 +105,34 @@ type PerplexitySearchResponse = {
   citations?: string[];
 };
 
+type ZhipuConfig = {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+};
+
+type ZhipuApiKeySource = "config" | "zhipu_env" | "none";
+
+type ZhipuSearchResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string;
+      tool_calls?: Array<{
+        function?: {
+          arguments?: string;
+        };
+        search_result?: Array<{
+          title?: string;
+          link?: string;
+          content?: string;
+          media?: string;
+        }>;
+      }>;
+    };
+  }>;
+  citations?: string[];
+};
+
 type PerplexityBaseUrlHint = "direct" | "openrouter";
 
 function resolveSearchConfig(cfg?: OpenClawConfig): WebSearchConfig {
@@ -137,6 +169,14 @@ function missingSearchKeyPayload(provider: (typeof SEARCH_PROVIDERS)[number]) {
       docs: "https://docs.openclaw.ai/tools/web",
     };
   }
+  if (provider === "zhipu") {
+    return {
+      error: "missing_zhipu_api_key",
+      message:
+        "web_search (zhipu) needs an API key. Set ZHIPU_API_KEY in the Gateway environment, or configure tools.web.search.zhipu.apiKey.",
+      docs: "https://docs.openclaw.ai/tools/web",
+    };
+  }
   return {
     error: "missing_brave_api_key",
     message: `web_search needs a Brave Search API key. Run \`${formatCliCommand("openclaw configure --section web")}\` to store it, or set BRAVE_API_KEY in the Gateway environment.`,
@@ -151,6 +191,9 @@ function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDE
       : "";
   if (raw === "perplexity") {
     return "perplexity";
+  }
+  if (raw === "zhipu") {
+    return "zhipu";
   }
   if (raw === "brave") {
     return "brave";
@@ -245,6 +288,46 @@ function resolvePerplexityModel(perplexity?: PerplexityConfig): string {
       ? perplexity.model.trim()
       : "";
   return fromConfig || DEFAULT_PERPLEXITY_MODEL;
+}
+
+function resolveZhipuConfig(search?: WebSearchConfig): ZhipuConfig {
+  if (!search || typeof search !== "object") {
+    return {};
+  }
+  const zhipu = "zhipu" in search ? search.zhipu : undefined;
+  if (!zhipu || typeof zhipu !== "object") {
+    return {};
+  }
+  return zhipu as ZhipuConfig;
+}
+
+function resolveZhipuApiKey(zhipu?: ZhipuConfig): {
+  apiKey?: string;
+  source: ZhipuApiKeySource;
+} {
+  const fromConfig = normalizeApiKey(zhipu?.apiKey);
+  if (fromConfig) {
+    return { apiKey: fromConfig, source: "config" };
+  }
+
+  const fromEnv = normalizeApiKey(process.env.ZHIPU_API_KEY);
+  if (fromEnv) {
+    return { apiKey: fromEnv, source: "zhipu_env" };
+  }
+
+  return { apiKey: undefined, source: "none" };
+}
+
+function resolveZhipuBaseUrl(zhipu?: ZhipuConfig): string {
+  const fromConfig =
+    zhipu && "baseUrl" in zhipu && typeof zhipu.baseUrl === "string" ? zhipu.baseUrl.trim() : "";
+  return fromConfig || DEFAULT_ZHIPU_BASE_URL;
+}
+
+function resolveZhipuModel(zhipu?: ZhipuConfig): string {
+  const fromConfig =
+    zhipu && "model" in zhipu && typeof zhipu.model === "string" ? zhipu.model.trim() : "";
+  return fromConfig || DEFAULT_ZHIPU_MODEL;
 }
 
 function resolveSearchCount(value: unknown, fallback: number): number {
@@ -350,6 +433,60 @@ async function runPerplexitySearch(params: {
   return { content, citations };
 }
 
+async function runZhipuSearch(params: {
+  query: string;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  timeoutSeconds: number;
+}): Promise<{ content: string; citations: string[] }> {
+  const endpoint = `${params.baseUrl.replace(/\/$/, "")}/chat/completions`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: params.model,
+      messages: [
+        {
+          role: "user",
+          content: params.query,
+        },
+      ],
+      tools: [
+        {
+          type: "web_search",
+          web_search: {
+            search_result: true,
+          },
+        },
+      ],
+    }),
+    signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+  });
+
+  if (!res.ok) {
+    const detail = await readResponseText(res);
+    throw new Error(`Zhipu API error (${res.status}): ${detail || res.statusText}`);
+  }
+
+  const data = (await res.json()) as ZhipuSearchResponse;
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+  if (!toolCall?.search_result || !Array.isArray(toolCall.search_result)) {
+    throw new Error("Zhipu API returned invalid search results");
+  }
+
+  const results = toolCall.search_result;
+  const content = results.map((r) => r.content ?? "").join("\n\n");
+  const citations = results.map((r) => r.link ?? "").filter(Boolean);
+
+  return { content, citations };
+}
+
 async function runWebSearch(params: {
   query: string;
   count: number;
@@ -363,6 +500,8 @@ async function runWebSearch(params: {
   freshness?: string;
   perplexityBaseUrl?: string;
   perplexityModel?: string;
+  zhipuBaseUrl?: string;
+  zhipuModel?: string;
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     params.provider === "brave"
@@ -391,6 +530,27 @@ async function runWebSearch(params: {
       model: params.perplexityModel ?? DEFAULT_PERPLEXITY_MODEL,
       tookMs: Date.now() - start,
       content: wrapWebContent(content),
+      citations,
+    };
+    writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+    return payload;
+  }
+
+  if (params.provider === "zhipu") {
+    const { content, citations } = await runZhipuSearch({
+      query: params.query,
+      apiKey: params.apiKey,
+      baseUrl: params.zhipuBaseUrl ?? DEFAULT_ZHIPU_BASE_URL,
+      model: params.zhipuModel ?? DEFAULT_ZHIPU_MODEL,
+      timeoutSeconds: params.timeoutSeconds,
+    });
+
+    const payload = {
+      query: params.query,
+      provider: params.provider,
+      model: params.zhipuModel ?? DEFAULT_ZHIPU_MODEL,
+      tookMs: Date.now() - start,
+      content,
       citations,
     };
     writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);

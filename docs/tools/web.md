@@ -9,9 +9,9 @@ title: "Web Tools"
 
 # Web tools
 
-OpenClaw ships two lightweight web tools:
+OpenClaw ships three lightweight web tools:
 
-- `web_search` — Search the web via Brave Search API (default) or Perplexity Sonar (direct or via OpenRouter).
+- `web_search` — Search the web via Brave Search API (default), Perplexity Sonar (direct or via OpenRouter), or Zhipu AI GLM-4.7/4.6 (direct HTTP API).
 - `web_fetch` — HTTP fetch + readable extraction (HTML → markdown/text).
 
 These are **not** browser automation. For JS-heavy sites or logins, use the
@@ -19,9 +19,10 @@ These are **not** browser automation. For JS-heavy sites or logins, use the
 
 ## How it works
 
-- `web_search` calls your configured provider and returns results.
+  - `web_search` calls your configured provider and returns results.
   - **Brave** (default): returns structured results (title, URL, snippet).
   - **Perplexity**: returns AI-synthesized answers with citations from real-time web search.
+  - **Zhipu AI** (HTTP API): returns AI-synthesized answers with search results from real-time web search via GLM-4.7/4.6.
 - Results are cached by query for 15 minutes (configurable).
 - `web_fetch` does a plain HTTP GET and extracts readable content
   (HTML → markdown/text). It does **not** execute JavaScript.
@@ -33,6 +34,7 @@ These are **not** browser automation. For JS-heavy sites or logins, use the
 | ------------------- | -------------------------------------------- | ---------------------------------------- | -------------------------------------------- |
 | **Brave** (default) | Fast, structured results, free tier          | Traditional search results               | `BRAVE_API_KEY`                              |
 | **Perplexity**      | AI-synthesized answers, citations, real-time | Requires Perplexity or OpenRouter access | `OPENROUTER_API_KEY` or `PERPLEXITY_API_KEY` |
+| **Zhipu AI**       | AI-synthesized answers, GLM-4.7/4.6, real-time | Requires Zhipu API key               | `ZHIPU_API_KEY`                              |
 
 See [Brave Search setup](/brave-search) and [Perplexity Sonar](/perplexity) for provider-specific details.
 
@@ -43,8 +45,27 @@ Set the provider in config:
   tools: {
     web: {
       search: {
-        provider: "brave", // or "perplexity"
+        provider: "brave", // or "perplexity" or "zhipu"
       },
+    },
+  },
+}
+```
+
+Example: switch to Zhipu AI (HTTP API):
+
+```json5
+{
+  "tools": {
+    "web": {
+      "search": {
+        "provider": "zhipu",
+        "zhipu": {
+          "apiKey": "your-zhipu-api-key",
+          "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+          "model": "web-search-pro"
+        }
+      }
     },
   },
 }

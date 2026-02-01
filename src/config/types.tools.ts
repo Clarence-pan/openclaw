@@ -336,8 +336,8 @@ export type ToolsConfig = {
     search?: {
       /** Enable web search tool (default: true when API key is present). */
       enabled?: boolean;
-      /** Search provider ("brave" or "perplexity"). */
-      provider?: "brave" | "perplexity";
+      /** Search provider ("brave", "perplexity", or "zhipu"). */
+      provider?: "brave" | "perplexity" | "zhipu";
       /** Brave Search API key (optional; defaults to BRAVE_API_KEY env var). */
       apiKey?: string;
       /** Default search results count (1-10). */
@@ -353,6 +353,15 @@ export type ToolsConfig = {
         /** Base URL for API requests (defaults to OpenRouter: https://openrouter.ai/api/v1). */
         baseUrl?: string;
         /** Model to use (defaults to "perplexity/sonar-pro"). */
+        model?: string;
+      };
+      /** Zhipu-specific configuration (used when provider="zhipu"). */
+      zhipu?: {
+        /** API key for Zhipu AI (defaults to ZHIPU_API_KEY env var). */
+        apiKey?: string;
+        /** Base URL for API requests (defaults to https://open.bigmodel.cn/api/paas/v4). */
+        baseUrl?: string;
+        /** Model to use (defaults to "glm-4-flash" or "web-search-pro"). */
         model?: string;
       };
     };
