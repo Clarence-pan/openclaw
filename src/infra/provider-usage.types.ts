@@ -25,4 +25,5 @@ export type UsageProviderId =
   | "minimax"
   | "openai-codex"
   | "xiaomi"
-  | "zai";
+  | "zai"
+  | "zai-coding-plan";

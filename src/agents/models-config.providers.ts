@@ -91,6 +91,16 @@ const QIANFAN_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+const ZAI_CODING_PLAN_BASE_URL = "https://open.bigmodel.cn/api/coding/paas/v4";
+const ZAI_CODING_PLAN_DEFAULT_CONTEXT_WINDOW = 128000;
+const ZAI_CODING_PLAN_DEFAULT_MAX_TOKENS = 8192;
+const ZAI_CODING_PLAN_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 interface OllamaModel {
   name: string;
   modified_at: string;
@@ -441,6 +451,51 @@ export function buildQianfanProvider(): ProviderConfig {
   };
 }
 
+function buildZaiCodingPlanProvider(): ProviderConfig {
+  return {
+    baseUrl: ZAI_CODING_PLAN_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: "glm-4.7",
+        name: "GLM-4.7",
+        reasoning: false,
+        input: ["text"],
+        cost: ZAI_CODING_PLAN_DEFAULT_COST,
+        contextWindow: ZAI_CODING_PLAN_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: ZAI_CODING_PLAN_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "glm-4.6",
+        name: "GLM-4.6",
+        reasoning: false,
+        input: ["text"],
+        cost: ZAI_CODING_PLAN_DEFAULT_COST,
+        contextWindow: ZAI_CODING_PLAN_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: ZAI_CODING_PLAN_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "glm-4.6v",
+        name: "GLM-4.6V",
+        reasoning: false,
+        input: ["text", "image"],
+        cost: ZAI_CODING_PLAN_DEFAULT_COST,
+        contextWindow: ZAI_CODING_PLAN_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: ZAI_CODING_PLAN_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "glm-4.6v-flash",
+        name: "GLM-4.6V Flash",
+        reasoning: false,
+        input: ["text", "image"],
+        cost: ZAI_CODING_PLAN_DEFAULT_COST,
+        contextWindow: ZAI_CODING_PLAN_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: ZAI_CODING_PLAN_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 export async function resolveImplicitProviders(params: {
   agentDir: string;
 }): Promise<ModelsConfig["providers"]> {
@@ -541,6 +596,14 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "qianfan", store: authStore });
   if (qianfanKey) {
     providers.qianfan = { ...buildQianfanProvider(), apiKey: qianfanKey };
+  }
+
+  // Z.AI Coding plan provider
+  const zaiCodingPlanKey =
+    resolveEnvApiKeyVarName("zai-coding-plan") ??
+    resolveApiKeyFromProfiles({ provider: "zai-coding-plan", store: authStore });
+  if (zaiCodingPlanKey) {
+    providers["zai-coding-plan"] = { ...buildZaiCodingPlanProvider(), apiKey: zaiCodingPlanKey };
   }
 
   return providers;
