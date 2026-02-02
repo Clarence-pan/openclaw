@@ -129,12 +129,6 @@ export async function createAcpClient(opts: AcpClientOptions = {}): Promise<AcpC
     clientInfo: { name: "openclaw-acp-client", version: "1.0.0" },
   });
 
-  log("creating session");
-  const session = await client.newSession({
-    cwd,
-    mcpServers: [],
-  });
-
   return {
     client,
     agent,
