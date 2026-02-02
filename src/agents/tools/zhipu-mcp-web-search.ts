@@ -4,8 +4,6 @@
  * This tool implements Zhipu's web search capability via MCP (Model Context Protocol)
  */
 
-import type { Tool } from "@mariozechner/pi-ai";
-
 export interface ZhipuSearchResult {
   title: string;
   url: string;
@@ -23,7 +21,7 @@ export interface ZhipuSearchOptions {
 export async function executeZhipuSearch(
   options: ZhipuSearchOptions,
   mcpCall: (serverName: string, toolName: string, args: unknown) => Promise<unknown>,
-): Promise<Tool[]> {
+): Promise<ZhipuSearchResult[]> {
   const { query, numResults = 10 } = options;
 
   try {
@@ -37,30 +35,9 @@ export async function executeZhipuSearch(
       return [];
     }
 
-    // Transform MCP response to Tool format
+    // Transform MCP response to ZhipuSearchResult format
     const items = (result as { items?: ZhipuSearchResult[] })?.items || [];
-
-    return items.map(
-      (item): Tool => ({
-        name: `zhipu-search: ${query}`,
-        description: `Search Zhipu for: ${query}`,
-        inputSchema: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "Search query",
-            },
-            numResults: {
-              type: "number",
-              description: "Number of results (default: 10)",
-              default: 10,
-            },
-          },
-          required: ["query"],
-        },
-      }),
-    );
+    return items;
   } catch (error) {
     console.error(`[zhipu-search] Error: ${error}`);
     throw error;
