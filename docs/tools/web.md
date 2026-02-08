@@ -19,7 +19,7 @@ These are **not** browser automation. For JS-heavy sites or logins, use the
 
 ## How it works
 
-  - `web_search` calls your configured provider and returns results.
+- `web_search` calls your configured provider and returns results.
   - **Brave** (default): returns structured results (title, URL, snippet).
   - **Perplexity**: returns AI-synthesized answers with citations from real-time web search.
   - **Zhipu AI** (HTTP API): returns AI-synthesized answers with search results from real-time web search via GLM-4.7/4.6.
@@ -30,11 +30,11 @@ These are **not** browser automation. For JS-heavy sites or logins, use the
 
 ## Choosing a search provider
 
-| Provider            | Pros                                         | Cons                                     | API Key                                      |
-| ------------------- | -------------------------------------------- | ---------------------------------------- | -------------------------------------------- |
-| **Brave** (default) | Fast, structured results, free tier          | Traditional search results               | `BRAVE_API_KEY`                              |
-| **Perplexity**      | AI-synthesized answers, citations, real-time | Requires Perplexity or OpenRouter access | `OPENROUTER_API_KEY` or `PERPLEXITY_API_KEY` |
-| **Zhipu AI**       | AI-synthesized answers, GLM-4.7/4.6, real-time | Requires Zhipu API key               | `ZHIPU_API_KEY`                              |
+| Provider            | Pros                                           | Cons                                     | API Key                                      |
+| ------------------- | ---------------------------------------------- | ---------------------------------------- | -------------------------------------------- |
+| **Brave** (default) | Fast, structured results, free tier            | Traditional search results               | `BRAVE_API_KEY`                              |
+| **Perplexity**      | AI-synthesized answers, citations, real-time   | Requires Perplexity or OpenRouter access | `OPENROUTER_API_KEY` or `PERPLEXITY_API_KEY` |
+| **Zhipu AI**        | AI-synthesized answers, GLM-4.7/4.6, real-time | Requires Zhipu API key                   | `ZHIPU_API_KEY`                              |
 
 See [Brave Search setup](/brave-search) and [Perplexity Sonar](/perplexity) for provider-specific details.
 
@@ -56,16 +56,16 @@ Example: switch to Zhipu AI (HTTP API):
 
 ```json5
 {
-  "tools": {
-    "web": {
-      "search": {
-        "provider": "zhipu",
-        "zhipu": {
-          "apiKey": "your-zhipu-api-key",
-          "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
-          "model": "web-search-pro"
-        }
-      }
+  tools: {
+    web: {
+      search: {
+        provider: "zhipu",
+        zhipu: {
+          apiKey: "your-zhipu-api-key",
+          baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+          model: "web-search-pro",
+        },
+      },
     },
   },
 }

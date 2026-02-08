@@ -338,8 +338,6 @@ export type ToolsConfig = {
       enabled?: boolean;
       /** Search provider ("brave", "perplexity", or "zhipu"). */
       provider?: "brave" | "perplexity" | "zhipu";
-      /** Use MCP server instead of direct API (for zhipu, requires mcpServers config). */
-      use_mcp?: boolean;
       /** Brave Search API key (optional; defaults to BRAVE_API_KEY env var). */
       apiKey?: string;
       /** Default search results count (1-10). */
