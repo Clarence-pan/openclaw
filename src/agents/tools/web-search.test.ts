@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { validateConfigObject } from "../../config/validation.js";
 import { __testing } from "./web-search.js";
 
 const {
