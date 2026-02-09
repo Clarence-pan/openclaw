@@ -336,8 +336,8 @@ export type ToolsConfig = {
     search?: {
       /** Enable web search tool (default: true when API key is present). */
       enabled?: boolean;
-      /** Search provider ("brave", "perplexity", or "zhipu"). */
-      provider?: "brave" | "perplexity" | "zhipu";
+      /** Search provider ("brave", "perplexity", "grok", or "zhipu"). */
+      provider?: "brave" | "perplexity" | "grok" | "zhipu";
       /** Brave Search API key (optional; defaults to BRAVE_API_KEY env var). */
       apiKey?: string;
       /** Default search results count (1-10). */
@@ -363,6 +363,15 @@ export type ToolsConfig = {
         baseUrl?: string;
         /** Model to use (defaults to "glm-4-flash" or "web-search-pro"). */
         model?: string;
+      };
+      /** Grok-specific configuration (used when provider="grok"). */
+      grok?: {
+        /** API key for xAI (defaults to XAI_API_KEY env var). */
+        apiKey?: string;
+        /** Model to use (defaults to "grok-4-1-fast"). */
+        model?: string;
+        /** Whether to include inline citations in the response (default: false). */
+        inlineCitations?: boolean;
       };
     };
     fetch?: {
