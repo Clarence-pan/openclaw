@@ -138,28 +138,6 @@ type ZhipuConfig = {
   model?: string;
 };
 
-type ZhipuApiKeySource = "config" | "zhipu_env" | "none";
-
-type ZhipuSearchResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-      tool_calls?: Array<{
-        function?: {
-          arguments?: string;
-        };
-        search_result?: Array<{
-          title?: string;
-          link?: string;
-          content?: string;
-          media?: string;
-        }>;
-      }>;
-    };
-  }>;
-  citations?: string[];
-};
-
 type PerplexityBaseUrlHint = "direct" | "openrouter";
 
 function extractGrokContent(data: GrokSearchResponse): string | undefined {
@@ -337,34 +315,6 @@ function resolvePerplexityModel(perplexity?: PerplexityConfig): string {
       ? perplexity.model.trim()
       : "";
   return fromConfig || DEFAULT_PERPLEXITY_MODEL;
-}
-
-function resolveZhipuConfig(search?: WebSearchConfig): ZhipuConfig {
-  if (!search || typeof search !== "object") {
-    return {};
-  }
-  const zhipu = "zhipu" in search ? search.zhipu : undefined;
-  if (!zhipu || typeof zhipu !== "object") {
-    return {};
-  }
-  return zhipu as ZhipuConfig;
-}
-
-function resolveZhipuApiKey(zhipu?: ZhipuConfig): {
-  apiKey?: string;
-  source: ZhipuApiKeySource;
-} {
-  const fromConfig = normalizeApiKey(zhipu?.apiKey);
-  if (fromConfig) {
-    return { apiKey: fromConfig, source: "config" };
-  }
-
-  const fromEnv = normalizeApiKey(process.env.ZHIPU_API_KEY);
-  if (fromEnv) {
-    return { apiKey: fromEnv, source: "zhipu_env" };
-  }
-
-  return { apiKey: undefined, source: "none" };
 }
 
 function resolveZhipuBaseUrl(zhipu?: ZhipuConfig): string {
