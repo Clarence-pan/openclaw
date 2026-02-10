@@ -34,7 +34,6 @@ const DEFAULT_GROK_MODEL = "grok-4-1-fast";
 
 const DEFAULT_ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
 const DEFAULT_ZHIPU_MODEL = "web-search-pro";
-const ZHIPU_KEY_PREFIXES = ["zhipu-"];
 
 const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
@@ -658,7 +657,11 @@ async function runWebSearch(params: {
   const cacheKey = normalizeCacheKey(
     params.provider === "brave"
       ? `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}:${params.freshness || "default"}`
-      : `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}`,
+      : params.provider === "perplexity"
+        ? `${params.provider}:${params.query}:${params.perplexityBaseUrl ?? DEFAULT_PERPLEXITY_BASE_URL}:${params.perplexityModel ?? DEFAULT_PERPLEXITY_MODEL}`
+        : params.provider === "zhipu"
+          ? `${params.provider}:${params.query}:${params.zhipuBaseUrl ?? DEFAULT_ZHIPU_BASE_URL}:${params.zhipuModel ?? DEFAULT_ZHIPU_MODEL}`
+          : `${params.provider}:${params.query}:${params.grokModel ?? DEFAULT_GROK_MODEL}:${String(params.grokInlineCitations ?? false)}`,
   );
   const cached = readCache(SEARCH_CACHE, cacheKey);
   if (cached) {

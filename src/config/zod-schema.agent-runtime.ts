@@ -194,6 +194,14 @@ export const ToolsWebSearchSchema = z
       })
       .strict()
       .optional(),
+    grok: z
+      .object({
+        apiKey: z.string().optional(),
+        model: z.string().optional(),
+        inlineCitations: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .optional();
@@ -498,14 +506,6 @@ export const ToolsSchema = z
                 enabled: z.boolean().optional(),
                 prefix: z.string().optional(),
                 suffix: z.string().optional(),
-              })
-              .strict()
-              .optional(),
-            grok: z
-              .object({
-                apiKey: z.string().optional(),
-                model: z.string().optional(),
-                inlineCitations: z.boolean().optional(),
               })
               .strict()
               .optional(),
