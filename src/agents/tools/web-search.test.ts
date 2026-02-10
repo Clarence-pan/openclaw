@@ -12,6 +12,7 @@ const {
   resolveGrokModel,
   resolveGrokInlineCitations,
   extractGrokContent,
+  resolveZhipuApiKey,
 } = __testing;
 
 describe("web_search zhipu baseUrl defaults", () => {
@@ -33,6 +34,41 @@ describe("web_search zhipu baseUrl defaults", () => {
     });
 
     expect(res.ok).toBe(true);
+  });
+});
+
+describe("web_search zhipu API key resolution", () => {
+  it("uses config apiKey when provided", () => {
+    expect(resolveZhipuApiKey({ apiKey: "zhipu-test-key" })).toBe("zhipu-test-key");
+  });
+
+  it("falls back to ZHIPU_API_KEY env var", () => {
+    const previous = process.env.ZHIPU_API_KEY;
+    try {
+      process.env.ZHIPU_API_KEY = "env-zhipu-key";
+      expect(resolveZhipuApiKey({})).toBe("env-zhipu-key");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.ZHIPU_API_KEY;
+      } else {
+        process.env.ZHIPU_API_KEY = previous;
+      }
+    }
+  });
+
+  it("returns undefined when no apiKey is available", () => {
+    const previous = process.env.ZHIPU_API_KEY;
+    try {
+      delete process.env.ZHIPU_API_KEY;
+      expect(resolveZhipuApiKey({})).toBeUndefined();
+      expect(resolveZhipuApiKey(undefined)).toBeUndefined();
+    } finally {
+      if (previous === undefined) {
+        delete process.env.ZHIPU_API_KEY;
+      } else {
+        process.env.ZHIPU_API_KEY = previous;
+      }
+    }
   });
 });
 

@@ -33,7 +33,6 @@ const XAI_API_ENDPOINT = "https://api.x.ai/v1/responses";
 const DEFAULT_GROK_MODEL = "grok-4-1-fast";
 
 const DEFAULT_ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
-const DEFAULT_ZHIPU_MODEL = "web-search-pro";
 
 const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
@@ -129,6 +128,25 @@ type GrokSearchResponse = {
     start_index: number;
     end_index: number;
     url: string;
+    text?: string;
+  }>;
+};
+
+// 智谱 web_search 独立搜索端点的响应结构（非 chat/completions）
+type ZhipuSearchResponse = {
+  search_result?: Array<{
+    title?: string;
+    link?: string;
+    content?: string;
+    media?: string;
+    icon?: string;
+    refer?: string;
+    publish_date?: string;
+  }>;
+  search_intent?: Array<{
+    intent?: string;
+    keywords?: string;
+    query?: string;
   }>;
 };
 
@@ -323,12 +341,6 @@ function resolveZhipuBaseUrl(zhipu?: ZhipuConfig): string {
   return fromConfig || DEFAULT_ZHIPU_BASE_URL;
 }
 
-function resolveZhipuModel(zhipu?: ZhipuConfig): string {
-  const fromConfig =
-    zhipu && "model" in zhipu && typeof zhipu.model === "string" ? zhipu.model.trim() : "";
-  return fromConfig || DEFAULT_ZHIPU_MODEL;
-}
-
 function isDirectPerplexityBaseUrl(baseUrl: string): boolean {
   const trimmed = baseUrl.trim();
   if (!trimmed) {
@@ -376,6 +388,28 @@ function resolveGrokModel(grok?: GrokConfig): string {
 
 function resolveGrokInlineCitations(grok?: GrokConfig): boolean {
   return grok?.inlineCitations === true;
+}
+
+// 从搜索配置中提取智谱子配置
+function resolveZhipuConfig(search?: WebSearchConfig): ZhipuConfig {
+  if (!search || typeof search !== "object") {
+    return {};
+  }
+  const zhipu = "zhipu" in search ? search.zhipu : undefined;
+  if (!zhipu || typeof zhipu !== "object") {
+    return {};
+  }
+  return zhipu as ZhipuConfig;
+}
+
+// 从配置或环境变量中解析智谱 API key
+function resolveZhipuApiKey(zhipu?: ZhipuConfig): string | undefined {
+  const fromConfig = normalizeApiKey(zhipu?.apiKey);
+  if (fromConfig) {
+    return fromConfig;
+  }
+  const fromEnv = normalizeApiKey(process.env.ZHIPU_API_KEY);
+  return fromEnv || undefined;
 }
 
 function resolveSearchCount(value: unknown, fallback: number): number {
@@ -532,14 +566,16 @@ async function runGrokSearch(params: {
   return { content, citations, inlineCitations };
 }
 
+// 调用智谱独立 web_search 端点（非 chat/completions）
 async function runZhipuSearch(params: {
   query: string;
   apiKey: string;
   baseUrl: string;
-  model: string;
+  count: number;
   timeoutSeconds: number;
 }): Promise<{ content: string; citations: string[] }> {
-  const endpoint = `${params.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  // 智谱搜索使用独立的 /web_search 端点
+  const endpoint = `${params.baseUrl.replace(/\/$/, "")}/web_search`;
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -548,21 +584,11 @@ async function runZhipuSearch(params: {
       Authorization: `Bearer ${params.apiKey}`,
     },
     body: JSON.stringify({
-      model: params.model,
-      messages: [
-        {
-          role: "user",
-          content: params.query,
-        },
-      ],
-      tools: [
-        {
-          type: "web_search",
-          web_search: {
-            search_result: true,
-          },
-        },
-      ],
+      search_query: params.query,
+      search_engine: "search_std",
+      count: params.count,
+      search_recency_filter: "noLimit",
+      content_size: "medium",
     }),
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
   });
@@ -573,13 +599,12 @@ async function runZhipuSearch(params: {
   }
 
   const data = (await res.json()) as ZhipuSearchResponse;
-  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  const results = data.search_result;
 
-  if (!toolCall?.search_result || !Array.isArray(toolCall.search_result)) {
+  if (!results || !Array.isArray(results)) {
     throw new Error("Zhipu API returned invalid search results");
   }
 
-  const results = toolCall.search_result;
   const content = results.map((r) => r.content ?? "").join("\n\n");
   const citations = results.map((r) => r.link ?? "").filter(Boolean);
 
@@ -600,7 +625,6 @@ async function runWebSearch(params: {
   perplexityBaseUrl?: string;
   perplexityModel?: string;
   zhipuBaseUrl?: string;
-  zhipuModel?: string;
   grokModel?: string;
   grokInlineCitations?: boolean;
 }): Promise<Record<string, unknown>> {
@@ -610,7 +634,7 @@ async function runWebSearch(params: {
       : params.provider === "perplexity"
         ? `${params.provider}:${params.query}:${params.perplexityBaseUrl ?? DEFAULT_PERPLEXITY_BASE_URL}:${params.perplexityModel ?? DEFAULT_PERPLEXITY_MODEL}`
         : params.provider === "zhipu"
-          ? `${params.provider}:${params.query}:${params.zhipuBaseUrl ?? DEFAULT_ZHIPU_BASE_URL}:${params.zhipuModel ?? DEFAULT_ZHIPU_MODEL}`
+          ? `${params.provider}:${params.query}:${params.zhipuBaseUrl ?? DEFAULT_ZHIPU_BASE_URL}:${params.count}`
           : `${params.provider}:${params.query}:${params.grokModel ?? DEFAULT_GROK_MODEL}:${String(params.grokInlineCitations ?? false)}`,
   );
   const cached = readCache(SEARCH_CACHE, cacheKey);
@@ -646,14 +670,13 @@ async function runWebSearch(params: {
       query: params.query,
       apiKey: params.apiKey,
       baseUrl: params.zhipuBaseUrl ?? DEFAULT_ZHIPU_BASE_URL,
-      model: params.zhipuModel ?? DEFAULT_ZHIPU_MODEL,
+      count: params.count,
       timeoutSeconds: params.timeoutSeconds,
     });
 
     const payload = {
       query: params.query,
       provider: params.provider,
-      model: params.zhipuModel ?? DEFAULT_ZHIPU_MODEL,
       tookMs: Date.now() - start,
       content,
       citations,
@@ -757,13 +780,16 @@ export function createWebSearchTool(options?: {
   const provider = resolveSearchProvider(search);
   const perplexityConfig = resolvePerplexityConfig(search);
   const grokConfig = resolveGrokConfig(search);
+  const zhipuConfig = resolveZhipuConfig(search);
 
   const description =
     provider === "perplexity"
       ? "Search the web using Perplexity Sonar (direct or via OpenRouter). Returns AI-synthesized answers with citations from real-time web search."
       : provider === "grok"
         ? "Search the web using xAI Grok. Returns AI-synthesized answers with citations from real-time web search."
-        : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
+        : provider === "zhipu"
+          ? "Search the web using Zhipu AI. Returns web search results with titles, URLs, and content snippets."
+          : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
 
   return {
     label: "Web Search",
@@ -778,7 +804,9 @@ export function createWebSearchTool(options?: {
           ? perplexityAuth?.apiKey
           : provider === "grok"
             ? resolveGrokApiKey(grokConfig)
-            : resolveSearchApiKey(search);
+            : provider === "zhipu"
+              ? resolveZhipuApiKey(zhipuConfig)
+              : resolveSearchApiKey(search);
 
       if (!apiKey) {
         return jsonResult(missingSearchKeyPayload(provider));
@@ -824,8 +852,7 @@ export function createWebSearchTool(options?: {
           perplexityAuth?.apiKey,
         ),
         perplexityModel: resolvePerplexityModel(perplexityConfig),
-        zhipuBaseUrl: resolveZhipuBaseUrl(search?.zhipu),
-        zhipuModel: resolveZhipuModel(search?.zhipu),
+        zhipuBaseUrl: resolveZhipuBaseUrl(zhipuConfig),
         grokModel: resolveGrokModel(grokConfig),
         grokInlineCitations: resolveGrokInlineCitations(grokConfig),
       });
@@ -844,4 +871,5 @@ export const __testing = {
   resolveGrokModel,
   resolveGrokInlineCitations,
   extractGrokContent,
+  resolveZhipuApiKey,
 } as const;
