@@ -605,7 +605,12 @@ async function runZhipuSearch(params: {
     throw new Error("Zhipu API returned invalid search results");
   }
 
-  const content = results.map((r) => r.content ?? "").join("\n\n");
+  // 将标题和正文一起拼接，便于上游模型理解每条结果的上下文
+  const content = results
+    .map((r) =>
+      `${r.title ?? ""}\n${r.media || "未知来源"} ${r.publish_date}\n${r.content ?? ""}`.trim(),
+    )
+    .join("\n\n");
   const citations = results.map((r) => r.link ?? "").filter(Boolean);
 
   return { content, citations };
