@@ -14,8 +14,10 @@ describe("web_search zhipu integration via runWebSearch", () => {
 
   it("calls Zhipu web_search endpoint and returns parsed results", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      // 校验请求 URL
-      expect(String(input)).toBe(`${ZHIPU_BASE_URL}/web_search`);
+      // 校验请求 URL（显式拿到 URL 字符串，避免触发默认 Object.toString()）
+      const requestUrl =
+        input instanceof URL ? input.toString() : typeof input === "string" ? input : input.url;
+      expect(requestUrl).toBe(`${ZHIPU_BASE_URL}/web_search`);
 
       // 校验 HTTP 方法
       expect(init?.method).toBe("POST");
