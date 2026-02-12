@@ -93,7 +93,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
   },
   {
     value: "zai",
-    label: "Z.AI (GLM 5 / 4.7)",
+    label: "Z.AI (GLM 4.7)",
     hint: "API key",
     choices: ["zai-api-key"],
   },
@@ -106,7 +106,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
   {
     value: "zai-coding-plan",
     label: "Z.AI Coding Plan",
-    hint: "GLM 5 / 4.7 / 4.6 models",
+    hint: "GLM 4.7/4.6 models",
     choices: ["zai-coding-plan-api-key"],
   },
   {
@@ -249,11 +249,11 @@ export function buildAuthChoiceOptions(params: {
     label: "Google Gemini CLI OAuth",
     hint: "Uses the bundled Gemini CLI auth plugin",
   });
-  options.push({ value: "zai-api-key", label: "Z.AI (GLM 5 / 4.7) API key" });
+  options.push({ value: "zai-api-key", label: "Z.AI (GLM 4.7) API key" });
   options.push({
     value: "zai-coding-plan-api-key",
     label: "Z.AI Coding Plan API key",
-    hint: "GLM 5 / 4.7 / 4.6 models via OpenAI-compatible endpoint",
+    hint: "GLM 4.7/4.6 models via OpenAI-compatible endpoint",
   });
   options.push({
     value: "xiaomi-api-key",
