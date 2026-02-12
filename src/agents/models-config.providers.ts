@@ -488,6 +488,15 @@ function buildZaiCodingPlanProvider(): ProviderConfig {
     api: "openai-completions",
     models: [
       {
+        id: "glm-5",
+        name: "GLM-5",
+        reasoning: false,
+        input: ["text"],
+        cost: ZAI_CODING_PLAN_DEFAULT_COST,
+        contextWindow: ZAI_CODING_PLAN_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: ZAI_CODING_PLAN_DEFAULT_MAX_TOKENS,
+      },
+      {
         id: "glm-4.7",
         name: "GLM-4.7",
         reasoning: false,
